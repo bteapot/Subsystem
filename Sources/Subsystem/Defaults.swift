@@ -28,6 +28,14 @@ public final class Defaults<Base: Subsystem> {
     let defaults: UserDefaults
 }
 
+// MARK: - Регистрация
+
+extension Defaults {
+    public func register(defaults: [String : Any]) {
+        self.defaults.register(defaults: defaults)
+    }
+}
+
 // MARK: - Методы
 
 extension Defaults {
