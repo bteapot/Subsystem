@@ -32,7 +32,7 @@ public final class Defaults<Base: Subsystem> {
 
 extension Defaults {
     public func register<V>(`default` key: Key<V>, _ value: V) {
-        self.defaults.register(defaults: [key.title: value])
+        self.defaults.register(defaults: [self.expand(key.title): value])
     }
 }
 
