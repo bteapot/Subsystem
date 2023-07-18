@@ -32,58 +32,58 @@ public final class Files<Base: Subsystem> {
 // MARK: - Методы
 
 extension Files {
-    public func get(_ item: Item) -> Data? {
-        return FileManager.default.contents(atPath: self.path(for: item))
+    public func get(_ key: Key) -> Data? {
+        return FileManager.default.contents(atPath: self.path(for: key))
     }
     
-    public func load<T>(_ item: Item, make: @escaping (Data) -> T) -> T? {
-        if let data = self.get(item) {
+    public func load<T>(_ key: Key, make: @escaping (Data) -> T) -> T? {
+        if let data = self.get(key) {
             return make(data)
         } else {
             return nil
         }
     }
     
-    public func set(_ item: Item, value: Data?) throws {
+    public func set(_ key: Key, value: Data?) throws {
         if let data = value {
-            try data.write(to: self.url(for: item))
+            try data.write(to: self.url(for: key))
         } else {
-            try self.delete(item)
+            try self.delete(key)
         }
     }
     
-    public func delete(_ item: Item) throws {
-        if self.contains(item) {
-            try FileManager.default.removeItem(at: self.url(for: item))
+    public func delete(_ key: Key) throws {
+        if self.contains(key) {
+            try FileManager.default.removeItem(at: self.url(for: key))
         }
     }
     
-    public func contains(_ item: Item) -> Bool {
-        return FileManager.default.fileExists(atPath: self.path(for: item))
+    public func contains(_ key: Key) -> Bool {
+        return FileManager.default.fileExists(atPath: self.path(for: key))
     }
 }
 
-// MARK: - Элементы
+// MARK: - Ключи
 
 extension Files {
-    public struct Item {
-        public init(key: String = #function) {
-            self.key = key
+    public struct Key {
+        public init(title: String = #function) {
+            self.title = title
         }
         
-        let key: String
+        let title: String
     }
 }
 
 // MARK: - Инструменты
 
 extension Files {
-    public func url(for item: Item) -> URL {
-        return self.folderURL.appendingPathComponent(item.key)
+    public func url(for key: Key) -> URL {
+        return self.folderURL.appendingPathComponent(key.title)
     }
     
-    public func path(for item: Item) -> String {
-        return self.url(for: item).path
+    public func path(for key: Key) -> String {
+        return self.url(for: key).path
     }
     
     public func subfolder(name: String) -> URL {

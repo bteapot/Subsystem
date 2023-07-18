@@ -20,20 +20,20 @@ import Foundation
 ///
 /// Объявлять ключи так:
 ///
-///     extension Keychain.Item where Base == SomeClass {
-///         static var server:      Keychain.Item<URL>          { .codable() }
-///         static var config:      Keychain.Item<ServerConfig> { .codable() }
-///         static var username:    Keychain.Item<String>       { .string()  }
-///         static var token:       Keychain.Item<Data>         { .data()    }
+///     extension Keychain.Key where Base == SomeClass {
+///         static var server:      Keychain.Key<URL>           { .init(.codable()) }
+///         static var config:      Keychain.Key<ServerConfig>  { .init(.codable()) }
+///         static var username:    Keychain.Key<String>        { .init(.string())  }
+///         static var token:       Keychain.Key<Data>          { .init(.data())    }
 ///     }
 ///
-///     extension Defaults.Item where Base == SomeClass {
-///         static var selectedTab: Defaults.Item<Int>          { .integer() }
-///         static var lastSearch:  Defaults.Item<String>       { .string()  }
+///     extension Defaults.Key where Base == SomeClass {
+///         static var selectedTab: Defaults.Key<Int>           { .init(.integer()) }
+///         static var lastSearch:  Defaults.Key<String>        { .init(.string())  }
 ///     }
 ///
-///     extension Files.Item where Base == SomeClass {
-///         static var logo:        Files.Item                  { .init() }
+///     extension Files.Key where Base == SomeClass {
+///         static var logo:        Files.Key                   { .init() }
 ///     }
 ///
 /// Использовать так:

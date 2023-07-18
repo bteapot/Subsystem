@@ -268,6 +268,6 @@ extension AppSubsystem: Subsystem {
     public static let assets = Assets<Self>(title: "App")
 }
 
-extension Defaults.Item where Base == AppSubsystem {
-    static var version: Defaults.Item<AppSubsystem.Release.Version> { .raw() }
+extension Defaults.Key where Base == AppSubsystem {
+    static var version: Defaults.Key<AppSubsystem.Release.Version> { .init(.raw()) }
 }
