@@ -31,8 +31,8 @@ public final class Defaults<Base: Subsystem> {
 // MARK: - Регистрация
 
 extension Defaults {
-    public func register(defaults: [String : Any]) {
-        self.defaults.register(defaults: defaults)
+    public func register<V>(`default` key: Key<V>, _ value: V) {
+        self.defaults.register(defaults: [key.title: value])
     }
 }
 
