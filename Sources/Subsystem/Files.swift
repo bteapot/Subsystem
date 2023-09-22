@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Files
 
-public final class Files<Base: Subsystem> {
+public final class Files<Base: Subsystem>: @unchecked Sendable {
     required init(title: String) {
         self.title = title
     }

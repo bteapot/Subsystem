@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Defaults
 
-public final class Defaults<Base: Subsystem> {
+public final class Defaults<Base: Subsystem>: @unchecked Sendable {
     public init?(suiteName: String, title: String) {
         guard let defaults = UserDefaults(suiteName: suiteName) else {
             return nil
@@ -103,9 +103,9 @@ extension Defaults {
             )
         }
         
-        public static func dictionary<K, V>() -> Value<Dictionary<K, V>> {
-            Value<Dictionary<K, V>>(
-                get: { $0.dictionary(forKey: $1) as? Dictionary<K, V> },
+        public static func dictionary<K, B>() -> Value<Dictionary<K, B>> {
+            Value<Dictionary<K, B>>(
+                get: { $0.dictionary(forKey: $1) as? Dictionary<K, B> },
                 set: { $0.set($2, forKey: $1) }
             )
         }

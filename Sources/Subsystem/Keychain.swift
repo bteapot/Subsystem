@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Keychain
 
-public final class Keychain<Base: Subsystem> {
+public final class Keychain<Base: Subsystem>: Sendable {
     init(title: String) {
         self.title = title
     }

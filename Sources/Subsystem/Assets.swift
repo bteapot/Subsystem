@@ -11,7 +11,7 @@ import OSLog
 
 // MARK: - Активы подсистемы
 
-public final class Assets<Base: Subsystem> {
+public final class Assets<Base: Subsystem>: @unchecked Sendable {
     
     // MARK: - Инициализация
     
