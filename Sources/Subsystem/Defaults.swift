@@ -176,14 +176,14 @@ extension Defaults {
             Value<T>(
                 get: {
                     if let data = $0.data(forKey: $1) {
-                        return try! JSONDecoder().decode(T.self, from: data)
+                        return try? JSONDecoder().decode(T.self, from: data)
                     } else {
                         return nil
                     }
                 },
                 set: {
                     if let value = $2 {
-                        $0.set(try! JSONEncoder().encode(value), forKey: $1)
+                        $0.set(try? JSONEncoder().encode(value), forKey: $1)
                     } else {
                         $0.set(nil, forKey: $1)
                     }
