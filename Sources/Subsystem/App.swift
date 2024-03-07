@@ -42,7 +42,7 @@ public struct AppSubsystem {
 // MARK: - Релиз
 
 extension AppSubsystem {
-    public struct Release {
+    public struct Release: Sendable {
         public let current:  Version
         public let previous: Version
         public let updated:  Bool
@@ -79,7 +79,7 @@ extension AppSubsystem.Release {
     /// Semantic versioning
     ///
     /// https://semver.org
-    public struct Version {
+    public struct Version: Sendable {
         public let major: Int
         public let minor: Int
         public let patch: Int
