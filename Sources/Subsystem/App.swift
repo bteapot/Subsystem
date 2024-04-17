@@ -175,17 +175,25 @@ extension AppSubsystem.Release.Version: RawRepresentable {
     }
     
     public init?(loose: String) {
-        let blocks =
+        let result: [Int?] =
             loose
                 .split(separator: ".")
-                .map { block in
-                    block.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-                }
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .map(Int.init)
         
-        if blocks.count > 0, let v = blocks[0] { self.major = v } else { self.major = 0 }
-        if blocks.count > 1, let v = blocks[1] { self.minor = v } else { self.minor = 0 }
-        if blocks.count > 2, let v = blocks[2] { self.patch = v } else { self.patch = 0 }
+        let blocks: [Int] =
+            result
+                .compactMap { $0 }
+        
+        guard
+            blocks.count == result.count
+        else {
+            return nil
+        }
+        
+        if blocks.count > 0 { self.major = blocks[0] } else { self.major = 0 }
+        if blocks.count > 1 { self.minor = blocks[1] } else { self.minor = 0 }
+        if blocks.count > 2 { self.patch = blocks[2] } else { self.patch = 0 }
         
         self.prereleases = []
         self.builds = []
@@ -208,39 +216,43 @@ extension AppSubsystem.Release.Version: RawRepresentable {
 
 extension AppSubsystem.Release.Version: Comparable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        if lhs.major != rhs.major { return false }
-        if lhs.minor != rhs.minor { return false }
-        if lhs.patch != rhs.patch { return false }
-        
-        if lhs.prereleases.count != rhs.prereleases.count { return false }
-        if zip(lhs.prereleases, rhs.prereleases).contains(where: { $0 != $1 }) { return false }
-        
-        if lhs.builds.count != rhs.builds.count { return false }
-        if zip(lhs.builds, rhs.builds).contains(where: { $0 != $1 }) { return false }
+        if lhs.major       != rhs.major       { return false }
+        if lhs.minor       != rhs.minor       { return false }
+        if lhs.patch       != rhs.patch       { return false }
+        if lhs.prereleases != rhs.prereleases { return false }
+        if lhs.builds      != rhs.builds      { return false }
         
         return true
     }
     
     public static func < (lhs: Self, rhs: Self) -> Bool {
-        if lhs.major < rhs.major { return true }
-        if lhs.minor < rhs.minor { return true }
-        if lhs.patch < rhs.patch { return true }
-        
-        let numericCompare = { (lhs: String, rhs: String) -> Bool in
-            if let lhsInt = Int(lhs), let rhsInt = Int(rhs) {
-                return lhsInt < rhsInt
-            } else {
-                return lhs < rhs
-            }
-        }
-        
-        if zip(lhs.prereleases, rhs.prereleases).contains(where: numericCompare) { return true }
-        if lhs.prereleases.count != rhs.prereleases.count { return lhs.prereleases.count < rhs.prereleases.count }
-        
-        if zip(lhs.builds, rhs.builds).contains(where: numericCompare) { return true }
-        if lhs.builds.count != rhs.builds.count { return lhs.builds.count < rhs.builds.count }
+        if lhs.major       != rhs.major       { return lhs.major        < rhs.major }
+        if lhs.minor       != rhs.minor       { return lhs.minor        < rhs.minor }
+        if lhs.patch       != rhs.patch       { return lhs.patch        < rhs.patch }
+        if lhs.prereleases != rhs.prereleases { return lhs.prereleases.isNumericallyLess(than: rhs.prereleases) }
+        if lhs.builds      != rhs.builds      { return lhs.builds.isNumericallyLess(than: rhs.builds) }
         
         return false
+    }
+}
+
+private extension String {
+    func isNumericallyLess(than other: Self) -> Bool {
+        if let lhi = Int(self), let rhi = Int(other) {
+            return lhi < rhi
+        } else {
+            return self < other
+        }
+    }
+}
+
+extension Array where Element == String {
+    func isNumericallyLess(than other: Self) -> Bool {
+        for (lhv, rhv) in zip(self, other) {
+            if lhv != rhv { return lhv.isNumericallyLess(than: rhv) }
+        }
+        
+        return self.count < other.count
     }
 }
 
