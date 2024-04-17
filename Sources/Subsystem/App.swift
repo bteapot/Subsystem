@@ -246,7 +246,7 @@ private extension String {
     }
 }
 
-extension Array where Element == String {
+private extension Array where Element == String {
     func isNumericallyLess(than other: Self) -> Bool {
         for (lhv, rhv) in zip(self, other) {
             if lhv != rhv { return lhv.isNumericallyLess(than: rhv) }
