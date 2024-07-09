@@ -36,9 +36,9 @@ extension Files {
         return FileManager.default.contents(atPath: self.path(for: key))
     }
     
-    public func load<T>(_ key: Key, make: @escaping (Data) -> T) -> T? {
+    public func get<T: Decodable>(_ key: Key, as: T.Type) throws -> T? {
         if let data = self.get(key) {
-            return make(data)
+            return try JSONDecoder().decode(T.self, from: data)
         } else {
             return nil
         }
@@ -46,6 +46,15 @@ extension Files {
     
     public func set(_ key: Key, value: Data?) throws {
         if let data = value {
+            try data.write(to: self.url(for: key))
+        } else {
+            try self.delete(key)
+        }
+    }
+    
+    public func set<T: Encodable>(_ key: Key, value: T?) throws {
+        if let value {
+            let data = try JSONEncoder().encode(value)
             try data.write(to: self.url(for: key))
         } else {
             try self.delete(key)
