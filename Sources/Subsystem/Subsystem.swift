@@ -50,5 +50,5 @@ import Foundation
 ///     SomeClass.assets.log.info("поехали")
 ///
 public protocol Subsystem {
-    nonisolated(unsafe) static var assets: Assets<Self> { get }
+    nonisolated static var assets: Assets<Self> { get }
 }
