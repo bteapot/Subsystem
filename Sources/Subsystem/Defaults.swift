@@ -60,6 +60,21 @@ extension Defaults {
     }
 }
 
+extension Defaults {
+    public func get(_ key: Key<Bool>) -> Bool {
+        return self.defaults.bool(forKey: self.expand(key.title))
+    }
+    public func get(_ key: Key<Int>) -> Int {
+        return self.defaults.integer(forKey: self.expand(key.title))
+    }
+    public func get(_ key: Key<Float>) -> Float {
+        return self.defaults.float(forKey: self.expand(key.title))
+    }
+    public func get(_ key: Key<Double>) -> Double {
+        return self.defaults.double(forKey: self.expand(key.title))
+    }
+}
+
 // MARK: - Ключи
 
 extension Defaults {
