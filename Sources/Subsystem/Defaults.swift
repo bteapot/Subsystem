@@ -111,14 +111,21 @@ extension Defaults {
             )
         }
         
-        public static func array<E>() -> Value<Array<E>> {
+        public static func array<E: _ObjectiveCBridgeable>() -> Value<Array<E>> {
             Value<Array<E>>(
                 get: { $0.array(forKey: $1) as? Array<E> },
                 set: { $0.set($2, forKey: $1) }
             )
         }
         
-        public static func dictionary<K, B>() -> Value<Dictionary<K, B>> {
+        public static func rawArray<E: RawRepresentable>() -> Value<Array<E>> {
+            Value<Array<E>>(
+                get: { ($0.array(forKey: $1) as? Array<E.RawValue>)?.compactMap({ .init(rawValue: $0) }) },
+                set: { $0.set($2?.map(\.rawValue), forKey: $1) }
+            )
+        }
+        
+        public static func dictionary<K: _ObjectiveCBridgeable, B: _ObjectiveCBridgeable>() -> Value<Dictionary<K, B>> {
             Value<Dictionary<K, B>>(
                 get: { $0.dictionary(forKey: $1) as? Dictionary<K, B> },
                 set: { $0.set($2, forKey: $1) }
