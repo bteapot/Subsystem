@@ -95,6 +95,10 @@ extension Files {
         return self.url(for: key).path
     }
     
+    public func attributes(of key: Key) throws -> [FileAttributeKey : Any] {
+        return try FileManager.default.attributesOfItem(atPath: self.path(for: key))
+    }
+    
     public func subfolder(name: String) -> URL {
         let url = self.folderURL.appendingPathComponent(name)
         try! FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
