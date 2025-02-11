@@ -37,6 +37,7 @@ public struct AppSubsystem {
     // MARK: - Релиз
     
     public static let release = Release()
+    public static let dates   = Dates()
 }
 
 // MARK: - Релиз
@@ -69,6 +70,35 @@ extension AppSubsystem {
         
         public func save() {
             AppSubsystem.assets.defaults.set(.version, value: self.current)
+        }
+    }
+}
+
+// MARK: - Даты
+
+extension AppSubsystem {
+    public struct Dates {
+        public let installed: Date
+        public let updated:   Date
+        
+        init() {
+            // дата установки
+            if  let path = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last?.path(percentEncoded: false),
+                let date = try? FileManager.default.attributesOfItem(atPath: path)[.creationDate] as? Date
+            {
+                self.installed = date
+            } else {
+                self.installed = .distantPast
+            }
+            
+            // дата обновления
+            if  let path = Bundle.main.executablePath,
+                let date = try? FileManager.default.attributesOfItem(atPath: path)[.creationDate] as? Date
+            {
+                self.updated = date
+            } else {
+                self.updated = .distantPast
+            }
         }
     }
 }
