@@ -32,7 +32,7 @@ public final class Defaults<Base: Subsystem>: @unchecked Sendable {
 
 extension Defaults {
     public func register<V>(`default` key: Key<V>, _ value: V) {
-        self.defaults.register(defaults: [self.expand(key.title): value])
+        self.defaults.register(defaults: [self.rawValue(key): value])
     }
 }
 
@@ -40,38 +40,57 @@ extension Defaults {
 
 extension Defaults {
     public func get<V>(_ key: Key<V>) -> V? {
-        return key.value.get(self.defaults, self.expand(key.title))
+        return key.value.get(self.defaults, self.rawValue(key))
     }
     
     public func set<V>(_ key: Key<V>, value: V?) {
-        key.value.set(self.defaults, self.expand(key.title), value)
+        key.value.set(self.defaults, self.rawValue(key), value)
     }
     
     public func delete<V>(_ key: Key<V>) {
-        self.defaults.removeObject(forKey: self.expand(key.title))
+        self.defaults.removeObject(forKey: self.rawValue(key))
     }
     
     public func contains<V>(_ key: Key<V>) -> Bool {
-        return self.defaults.object(forKey: self.expand(key.title)) != nil
+        return self.defaults.object(forKey: self.rawValue(key)) != nil
     }
     
     public func rawValue<V>(_ key: Key<V>) -> String {
         return self.expand(key.title)
     }
+    
+    public func observe<V>(_ key: Key<V>, initial: Bool = false, receive: @escaping (V?) -> Void) -> Any {
+        return Observer(self.defaults, self.rawValue(key), initial, receive) { key.value.get($0, $1) }
+    }
 }
 
 extension Defaults {
     public func get(_ key: Key<Bool>) -> Bool {
-        return self.defaults.bool(forKey: self.expand(key.title))
+        return self.defaults.bool(forKey: self.rawValue(key))
     }
     public func get(_ key: Key<Int>) -> Int {
-        return self.defaults.integer(forKey: self.expand(key.title))
+        return self.defaults.integer(forKey: self.rawValue(key))
     }
     public func get(_ key: Key<Float>) -> Float {
-        return self.defaults.float(forKey: self.expand(key.title))
+        return self.defaults.float(forKey: self.rawValue(key))
     }
     public func get(_ key: Key<Double>) -> Double {
-        return self.defaults.double(forKey: self.expand(key.title))
+        return self.defaults.double(forKey: self.rawValue(key))
+    }
+}
+
+extension Defaults {
+    public func observe(_ key: Key<Bool>, initial: Bool = false, receive: @escaping (Bool) -> Void) -> Any {
+        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.bool(forKey: $1) }
+    }
+    public func observe(_ key: Key<Int>, initial: Bool = false, receive: @escaping (Int) -> Void) -> Any {
+        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.integer(forKey: $1) }
+    }
+    public func observe(_ key: Key<Float>, initial: Bool = false, receive: @escaping (Float) -> Void) -> Any {
+        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.float(forKey: $1) }
+    }
+    public func observe(_ key: Key<Double>, initial: Bool = false, receive: @escaping (Double) -> Void) -> Any {
+        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.double(forKey: $1) }
     }
 }
 
@@ -223,6 +242,43 @@ private extension Defaults {
             return "\(AppSubsystem.prefix)-\(self.title)-\(key)"
         } else {
             return "\(self.title)-\(key)"
+        }
+    }
+}
+
+private extension Defaults {
+    final class Observer<V>: NSObject {
+        init(
+            _ defaults: UserDefaults,
+            _ keyPath:  String,
+            _ initial:  Bool,
+            _ receive:  @escaping (V) -> Void,
+            _ retreive: @escaping (_ defaults: UserDefaults, _ keyPath: String) -> V
+        ) {
+            self.defaults = defaults
+            self.keyPath = keyPath
+            self.retreive = retreive
+            self.receive = receive
+            self.cancel = { defaults.removeObserver($0, forKeyPath: keyPath) }
+            
+            super.init()
+            
+            defaults.addObserver(self, forKeyPath: keyPath, options: initial ? [.initial, .new] : .new, context: nil)
+        }
+        
+        deinit {
+            self.cancel(self)
+        }
+        
+        private let defaults: UserDefaults
+        private let keyPath:  String
+        private let receive: (V) -> Void
+        private let retreive: (UserDefaults, String) -> V
+        private let cancel: (Defaults.Observer<V>) -> Void
+        
+        override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
+            let value = self.retreive(self.defaults, self.keyPath)
+            self.receive(value)
         }
     }
 }
