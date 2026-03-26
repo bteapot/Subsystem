@@ -32,7 +32,7 @@ public final class Defaults<Base: Subsystem>: @unchecked Sendable {
 
 extension Defaults {
     public func register<V>(`default` key: Key<V>, _ value: V) {
-        self.defaults.register(defaults: [self.rawValue(key): value])
+        key.value.def(self.defaults, self.rawValue(key), value)
     }
 }
 
@@ -117,86 +117,99 @@ extension Defaults {
         
         let get: Get
         let set: Set
+        let def: Set
         
-        private init(get: @escaping Get, set: @escaping Set) {
+        private init(get: @escaping Get, set: @escaping Set, def: @escaping Set) {
             self.get = get
             self.set = set
+            self.def = def
         }
         
         public static func url() -> Value<URL> {
             Value<URL>(
                 get: { $0.url(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
         
         public static func array<E: _ObjectiveCBridgeable>() -> Value<Array<E>> {
             Value<Array<E>>(
                 get: { $0.array(forKey: $1) as? Array<E> },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
         
         public static func rawArray<E: RawRepresentable>() -> Value<Array<E>> {
             Value<Array<E>>(
                 get: { ($0.array(forKey: $1) as? Array<E.RawValue>)?.compactMap({ .init(rawValue: $0) }) },
-                set: { $0.set($2?.map(\.rawValue), forKey: $1) }
+                set: { $0.set($2?.map(\.rawValue), forKey: $1) },
+                def: { $0.register($2?.map(\.rawValue), forKey: $1) }
             )
         }
         
         public static func dictionary<K: _ObjectiveCBridgeable, B: _ObjectiveCBridgeable>() -> Value<Dictionary<K, B>> {
             Value<Dictionary<K, B>>(
                 get: { $0.dictionary(forKey: $1) as? Dictionary<K, B> },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
         
         public static func string() -> Value<String> {
             Value<String>(
                 get: { $0.string(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
 
         public static func data() -> Value<Data> {
             Value<Data>(
                 get: { $0.data(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
         
         public static func bool() -> Value<Bool> {
             Value<Bool>(
                 get: { $0.bool(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
 
         public static func integer() -> Value<Int> {
             Value<Int>(
                 get: { $0.integer(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
 
         public static func float() -> Value<Float> {
             Value<Float>(
                 get: { $0.float(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
 
         public static func double() -> Value<Double> {
             Value<Double>(
                 get: { $0.double(forKey: $1) },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
         
         public static func date() -> Value<Date> {
             Value<Date>(
                 get: { $0.object(forKey: $1) as? Date },
-                set: { $0.set($2, forKey: $1) }
+                set: { $0.set($2, forKey: $1) },
+                def: { $0.register($2, forKey: $1) }
             )
         }
         
@@ -209,7 +222,8 @@ extension Defaults {
                         return nil
                     }
                 },
-                set: { $0.set($2?.rawValue, forKey: $1) }
+                set: { $0.set($2?.rawValue, forKey: $1) },
+                def: { $0.register($2?.rawValue, forKey: $1) }
             )
         }
         
@@ -227,6 +241,11 @@ extension Defaults {
                         $0.set(try? JSONEncoder().encode(value), forKey: $1)
                     } else {
                         $0.set(nil, forKey: $1)
+                    }
+                },
+                def: {
+                    if let value = $2 {
+                        $0.register(try? JSONEncoder().encode(value), forKey: $1)
                     }
                 }
             )
@@ -279,6 +298,14 @@ private extension Defaults {
         override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
             let value = self.retreive(self.defaults, self.keyPath)
             self.receive(value)
+        }
+    }
+}
+
+private extension UserDefaults {
+    func register<V>(_ value: V?, forKey: String) {
+        if let value {
+            self.register(defaults: [forKey: value])
         }
     }
 }
