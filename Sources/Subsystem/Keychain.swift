@@ -30,7 +30,7 @@ extension Keychain {
     }
     
     public func set<V>(_ key: Key<V>, value: V) throws {
-        try self.set(try key.value.set(value), for: key.title)
+        try self.set(try key.value.set(value), for: key.title, accessible: key.accessible)
     }
     
     public func delete<V>(_ key: Key<V>) throws {
@@ -50,13 +50,15 @@ extension Keychain {
 
 extension Keychain {
     public struct Key<V> {
-        public init(title: String = #function, _ value: Value<V>) {
+        public init(title: String = #function, _ value: Value<V>, accessible: CFString = kSecAttrAccessibleWhenUnlocked) {
             self.title = title
             self.value = value
+            self.accessible = accessible
         }
         
         let title: String
         let value: Value<V>
+        let accessible: CFString
     }
 }
 
@@ -111,18 +113,23 @@ private extension Keychain {
     
     func get(for title: String) throws -> Data? {
         var item: CFTypeRef?
-        let status = SecItemCopyMatching([
+        
+        let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: self.expand(title),
             kSecMatchLimit as String:  kSecMatchLimitOne,
             kSecReturnData as String:  true,
-        ] as [String : Any] as CFDictionary, &item)
+        ]
+        
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
         
         switch status {
             case errSecSuccess:
                 break
+                
             case errSecItemNotFound:
                 return nil
+                
             default:
                 throw status.error()
         }
@@ -134,42 +141,54 @@ private extension Keychain {
         }
     }
     
-    func set(_ data: Data, for title: String) throws {
+    func set(_ data: Data, for title: String, accessible: CFString) throws {
         if try self.contains(for: title) == true {
+            let query: [String: Any] = [
+                kSecClass as String:       kSecClassGenericPassword,
+                kSecAttrService as String: self.expand(title),
+            ]
+            
+            let update: [String: Any] = [
+                kSecValueData as String:      data,
+                kSecAttrAccessible as String: accessible,
+            ]
+            
             try OSStatus.execute {
-                SecItemUpdate([
-                    kSecClass as String:       kSecClassGenericPassword,
-                    kSecAttrService as String: self.expand(title),
-                ] as [String : Any] as CFDictionary, [
-                    kSecValueData as String:   data,
-                ] as [String : Any] as CFDictionary)
+                SecItemUpdate(query as CFDictionary, update as CFDictionary)
             }
         } else {
+            let attributes: [String: Any] = [
+                kSecClass as String:          kSecClassGenericPassword,
+                kSecAttrService as String:    self.expand(title),
+                kSecValueData as String:      data,
+                kSecAttrAccessible as String: accessible,
+            ]
+            
             try OSStatus.execute {
-                SecItemAdd([
-                    kSecClass as String:       kSecClassGenericPassword,
-                    kSecAttrService as String: self.expand(title),
-                    kSecValueData as String:   data,
-                ] as [String : Any] as CFDictionary, nil)
+                SecItemAdd(attributes as CFDictionary, nil)
             }
         }
     }
     
     func delete(for title: String) throws {
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: self.expand(title),
+        ]
+        
         try OSStatus.execute(skip: [errSecItemNotFound]) {
-            SecItemDelete([
-                kSecClass as String:       kSecClassGenericPassword,
-                kSecAttrService as String: self.expand(title),
-            ] as [String : Any] as CFDictionary)
+            SecItemDelete(query as CFDictionary)
         }
     }
     
     func contains(for title: String) throws -> Bool {
-        let status = SecItemCopyMatching([
+        let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: self.expand(title),
             kSecMatchLimit as String:  kSecMatchLimitOne,
-        ] as [String : Any] as CFDictionary, nil)
+        ]
+        
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
         
         switch status {
             case errSecSuccess:

@@ -24,7 +24,7 @@ import Foundation
 ///         static var server:      Keychain.Key<URL>           { .init(.codable()) }
 ///         static var config:      Keychain.Key<ServerConfig>  { .init(.codable()) }
 ///         static var username:    Keychain.Key<String>        { .init(.string())  }
-///         static var token:       Keychain.Key<Data>          { .init(.data())    }
+///         static var token:       Keychain.Key<Data>          { .init(.data(), accessible: kSecAttrAccessibleAfterFirstUnlock) }
 ///     }
 ///
 ///     extension Defaults.Key where Base == SomeClass {
