@@ -20,6 +20,12 @@ public struct AppSubsystem {
     
     static var prefix: String = ""
     
+    public static func set(accessible: CFString) {
+        self.accessible = accessible
+    }
+    
+    public private(set) static var accessible: CFString = kSecAttrAccessibleWhenUnlocked
+    
     static let folderURL: URL = {
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appBundleID = Bundle.main.bundleIdentifier!

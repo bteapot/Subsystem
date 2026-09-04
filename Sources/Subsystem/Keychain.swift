@@ -50,7 +50,7 @@ extension Keychain {
 
 extension Keychain {
     public struct Key<V> {
-        public init(title: String = #function, _ value: Value<V>, accessible: CFString = kSecAttrAccessibleWhenUnlocked) {
+        public init(title: String = #function, _ value: Value<V>, accessible: CFString = AppSubsystem.accessible) {
             self.title = title
             self.value = value
             self.accessible = accessible
