@@ -262,10 +262,10 @@ extension AppSubsystem.Release.Version: Comparable {
     }
     
     public static func < (lhs: Self, rhs: Self) -> Bool {
-        if lhs.major       != rhs.major       { return lhs.major        < rhs.major }
-        if lhs.minor       != rhs.minor       { return lhs.minor        < rhs.minor }
-        if lhs.patch       != rhs.patch       { return lhs.patch        < rhs.patch }
-        if lhs.prereleases != rhs.prereleases { return lhs.prereleases.isNumericallyLess(than: rhs.prereleases) }
+        if lhs.major       != rhs.major       { return lhs.major < rhs.major }
+        if lhs.minor       != rhs.minor       { return lhs.minor < rhs.minor }
+        if lhs.patch       != rhs.patch       { return lhs.patch < rhs.patch }
+        if lhs.prereleases != rhs.prereleases { return lhs.prereleases.isSemanticallyLess(than: rhs.prereleases) }
         if lhs.builds      != rhs.builds      { return lhs.builds.isNumericallyLess(than: rhs.builds) }
         
         return false
@@ -274,16 +274,35 @@ extension AppSubsystem.Release.Version: Comparable {
 
 private extension String {
     func isNumericallyLess(than other: Self) -> Bool {
-        if let lhi = Int(self), let rhi = Int(other) {
-            return lhi < rhi
+        if let lhi = Int(self) {
+            if let rhi = Int(other) {
+                return lhi < rhi
+            } else {
+                return true
+            }
         } else {
-            return self < other
+            if let rhi = Int(other) {
+                return false
+            } else {
+                return self < other
+            }
         }
     }
 }
 
 private extension Array where Element == String {
     func isNumericallyLess(than other: Self) -> Bool {
+        for (lhv, rhv) in zip(self, other) {
+            if lhv != rhv { return lhv.isNumericallyLess(than: rhv) }
+        }
+        
+        return self.count < other.count
+    }
+    
+    func isSemanticallyLess(than other: Self) -> Bool {
+        if self.isEmpty  { return false }
+        if other.isEmpty { return true  }
+        
         for (lhv, rhv) in zip(self, other) {
             if lhv != rhv { return lhv.isNumericallyLess(than: rhv) }
         }
