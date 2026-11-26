@@ -10,29 +10,19 @@ import Foundation
 
 // MARK: - Defaults
 
-public final class Defaults<Base: Subsystem>: @unchecked Sendable {
-    public init?(suiteName: String, title: String) {
-        guard let defaults = UserDefaults(suiteName: suiteName) else {
-            return nil
-        }
+public struct Defaults<Base: Subsystem>: Sendable {
+    public init(title: String) {
         self.title = title
-        self.defaults = defaults
-    }
-    
-    init(title: String) {
-        self.title = title
-        self.defaults = UserDefaults.standard
     }
     
     let title: String
-    let defaults: UserDefaults
 }
 
 // MARK: - Регистрация
 
 extension Defaults {
     public func register<V>(`default` key: Key<V>, _ value: V) {
-        key.value.def(self.defaults, self.rawValue(key), value)
+        key.value.def(self.defaults(for: key.group), self.rawValue(key), value)
     }
 }
 
@@ -40,19 +30,19 @@ extension Defaults {
 
 extension Defaults {
     public func get<V>(_ key: Key<V>) -> V? {
-        return key.value.get(self.defaults, self.rawValue(key))
+        return key.value.get(self.defaults(for: key.group), self.rawValue(key))
     }
     
     public func set<V>(_ key: Key<V>, value: V?) {
-        key.value.set(self.defaults, self.rawValue(key), value)
+        key.value.set(self.defaults(for: key.group), self.rawValue(key), value)
     }
     
     public func delete<V>(_ key: Key<V>) {
-        self.defaults.removeObject(forKey: self.rawValue(key))
+        self.defaults(for: key.group).removeObject(forKey: self.rawValue(key))
     }
     
     public func contains<V>(_ key: Key<V>) -> Bool {
-        return self.defaults.object(forKey: self.rawValue(key)) != nil
+        return self.defaults(for: key.group).object(forKey: self.rawValue(key)) != nil
     }
     
     public func rawValue<V>(_ key: Key<V>) -> String {
@@ -60,50 +50,52 @@ extension Defaults {
     }
     
     public func observe<V>(_ key: Key<V>, initial: Bool = false, receive: @escaping (V?) -> Void) -> Any {
-        return Observer(self.defaults, self.rawValue(key), initial, receive) { key.value.get($0, $1) }
+        return Observer(self.defaults(for: key.group), self.rawValue(key), initial, receive) { key.value.get($0, $1) }
     }
 }
 
 extension Defaults {
     public func get(_ key: Key<Bool>) -> Bool {
-        return self.defaults.bool(forKey: self.rawValue(key))
+        return self.defaults(for: key.group).bool(forKey: self.rawValue(key))
     }
     public func get(_ key: Key<Int>) -> Int {
-        return self.defaults.integer(forKey: self.rawValue(key))
+        return self.defaults(for: key.group).integer(forKey: self.rawValue(key))
     }
     public func get(_ key: Key<Float>) -> Float {
-        return self.defaults.float(forKey: self.rawValue(key))
+        return self.defaults(for: key.group).float(forKey: self.rawValue(key))
     }
     public func get(_ key: Key<Double>) -> Double {
-        return self.defaults.double(forKey: self.rawValue(key))
+        return self.defaults(for: key.group).double(forKey: self.rawValue(key))
     }
 }
 
 extension Defaults {
     public func observe(_ key: Key<Bool>, initial: Bool = false, receive: @escaping (Bool) -> Void) -> Any {
-        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.bool(forKey: $1) }
+        return Observer(self.defaults(for: key.group), self.rawValue(key), initial, receive) { $0.bool(forKey: $1) }
     }
     public func observe(_ key: Key<Int>, initial: Bool = false, receive: @escaping (Int) -> Void) -> Any {
-        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.integer(forKey: $1) }
+        return Observer(self.defaults(for: key.group), self.rawValue(key), initial, receive) { $0.integer(forKey: $1) }
     }
     public func observe(_ key: Key<Float>, initial: Bool = false, receive: @escaping (Float) -> Void) -> Any {
-        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.float(forKey: $1) }
+        return Observer(self.defaults(for: key.group), self.rawValue(key), initial, receive) { $0.float(forKey: $1) }
     }
     public func observe(_ key: Key<Double>, initial: Bool = false, receive: @escaping (Double) -> Void) -> Any {
-        return Observer(self.defaults, self.rawValue(key), initial, receive) { $0.double(forKey: $1) }
+        return Observer(self.defaults(for: key.group), self.rawValue(key), initial, receive) { $0.double(forKey: $1) }
     }
 }
 
 // MARK: - Ключи
 
 extension Defaults {
-    public struct Key<V> {
-        public init(title: String = #function, _ value: Value<V>) {
+    public struct Key<V: Sendable>: Sendable {
+        public init(title: String = #function, _ value: Value<V>, group: String? = nil) {
             self.title = title
+            self.group = group
             self.value = value
         }
         
         let title: String
+        let group: String?
         let value: Value<V>
     }
 }
@@ -111,9 +103,9 @@ extension Defaults {
 // MARK: - Значения
 
 extension Defaults {
-    public final class Value<V> {
-        typealias Get = (UserDefaults, String) -> V?
-        typealias Set = (UserDefaults, String, V?) -> Void
+    public struct Value<V: Sendable>: Sendable {
+        typealias Get = @Sendable (UserDefaults, String) -> V?
+        typealias Set = @Sendable (UserDefaults, String, V?) -> Void
         
         let get: Get
         let set: Set
@@ -256,9 +248,19 @@ extension Defaults {
 // MARK: - Инструменты
 
 private extension Defaults {
+    func defaults(for group: String?) -> UserDefaults {
+        if let group {
+            return UserDefaults(suiteName: group)!
+        } else {
+            return UserDefaults.standard
+        }
+    }
+    
     func expand(_ key: String) -> String {
-        if AppSubsystem.prefix.isEmpty == false {
-            return "\(AppSubsystem.prefix)-\(self.title)-\(key)"
+        let prefix = AppSubsystem.prefix
+        
+        if prefix.isEmpty == false {
+            return "\(prefix)-\(self.title)-\(key)"
         } else {
             return "\(self.title)-\(key)"
         }

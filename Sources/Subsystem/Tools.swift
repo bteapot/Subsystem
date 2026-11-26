@@ -53,3 +53,33 @@ extension OSStatus {
         )
     }
 }
+
+final class Mutex<Value>: Sendable {
+    
+    init(_ value: sending Value) {
+        self.storage = Storage(value)
+    }
+    
+    var value: Value {
+        get { self.lock.withLock { self.storage.value } }
+        set { self.lock.withLock { self.storage.value = newValue } }
+    }
+    
+    func withLock<Result: ~Copyable, E: Error>(_ body: (inout sending Value) throws(E) -> sending Result) throws(E) -> sending Result {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        return try body(&self.storage.value)
+    }
+    
+    private final class Storage: @unchecked Sendable {
+        init(_ value: sending Value) {
+            self.value = value
+        }
+        
+        var value: Value
+    }
+    
+    private let storage: Storage
+    private let lock = NSLock()
+    
+}

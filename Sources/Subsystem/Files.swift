@@ -17,7 +17,7 @@ public final class Files<Base: Subsystem>: @unchecked Sendable {
     
     let title: String
     
-    public lazy var folderURL: URL = {
+    public private(set) lazy var folder: URL = {
         // папка сервиса
         let url = AppSubsystem.folderURL.appendingPathComponent(self.title)
         
@@ -76,11 +76,13 @@ extension Files {
 
 extension Files {
     public struct Key {
-        public init(title: String = #function) {
+        public init(title: String = #function, group: String? = nil) {
             self.title = title
+            self.group = group
         }
         
         let title: String
+        let group: String?
     }
 }
 
@@ -88,7 +90,7 @@ extension Files {
 
 extension Files {
     public func url(for key: Key) -> URL {
-        return self.folderURL.appendingPathComponent(key.title)
+        return self.folder(for: key.group).appendingPathComponent(key.title)
     }
     
     public func path(for key: Key) -> String {
@@ -99,8 +101,28 @@ extension Files {
         return try FileManager.default.attributesOfItem(atPath: self.path(for: key))
     }
     
-    public func subfolder(name: String) -> URL {
-        let url = self.folderURL.appendingPathComponent(name)
+    public func folder(for group: String?) -> URL {
+        guard let group else {
+            return self.folder
+        }
+        
+        guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?.appendingPathComponent(self.title) else {
+            preconditionFailure()
+        }
+        
+        if FileManager.default.fileExists(atPath: url.path) == false {
+            do {
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            } catch {
+                preconditionFailure()
+            }
+        }
+        
+        return url
+    }
+    
+    public func subfolder(name: String, group: String? = nil) -> URL {
+        let url = self.folder(for: group).appendingPathComponent(name)
         try! FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }

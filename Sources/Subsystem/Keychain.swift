@@ -22,7 +22,7 @@ public final class Keychain<Base: Subsystem>: Sendable {
 
 extension Keychain {
     public func get<V>(_ key: Key<V>) throws -> V? {
-        if let data = try self.get(for: key.title) {
+        if let data = try self.get(for: key.id) {
             return try key.value.get(data)
         } else {
             return nil
@@ -30,19 +30,19 @@ extension Keychain {
     }
     
     public func set<V>(_ key: Key<V>, value: V) throws {
-        try self.set(try key.value.set(value), for: key.title, accessible: key.accessible)
+        try self.set(try key.value.set(value), for: key.id)
     }
     
     public func delete<V>(_ key: Key<V>) throws {
-        try self.delete(for: key.title)
+        try self.delete(for: key.id)
     }
     
     public func contains<V>(_ key: Key<V>) throws -> Bool {
-        try self.contains(for: key.title)
+        try self.contains(for: key.id)
     }
     
     public func rawValue<V>(_ key: Key<V>) -> String {
-        return self.expand(key.title)
+        return self.expand(key.id.title)
     }
 }
 
@@ -50,22 +50,29 @@ extension Keychain {
 
 extension Keychain {
     public struct Key<V> {
-        public init(title: String = #function, _ value: Value<V>, accessible: CFString = AppSubsystem.accessible) {
-            self.title = title
+        public init(title: String = #function, _ value: Value<V>, group: String? = nil, sync: Bool = false, access: CFString = AppSubsystem.access) {
+            self.id = ID(title: title, group: group, sync: sync, access: access)
             self.value = value
-            self.accessible = accessible
         }
         
-        let title: String
+        let id: ID
         let value: Value<V>
-        let accessible: CFString
+    }
+}
+
+extension Keychain {
+    public struct ID {
+        let title: String
+        let group: String?
+        let sync: Bool
+        let access: CFString
     }
 }
 
 // MARK: - Значения
 
 extension Keychain {
-    public final class Value<V> {
+    public struct Value<V> {
         typealias Get = (Data) throws -> V
         typealias Set = (V) throws -> Data
         
@@ -100,28 +107,21 @@ extension Keychain {
     }
 }
 
-// MARK: - Инструменты
+// MARK: - Приватное
 
 private extension Keychain {
-    func expand(_ key: String) -> String {
-        if AppSubsystem.prefix.isEmpty == false {
-            return "\(AppSubsystem.prefix)-\(self.title)-\(key)"
-        } else {
-            return "\(self.title)-\(key)"
-        }
-    }
-    
-    func get(for title: String) throws -> Data? {
+    func get(for id: ID) throws -> Data? {
+        let query = self.dict(from: [
+            kSecClass:              kSecClassGenericPassword,
+            kSecAttrService:        self.expand(id.title),
+            kSecAttrAccessGroup:    id.group,
+            kSecAttrSynchronizable: self.sync(for: id.sync),
+            kSecMatchLimit:         kSecMatchLimitOne,
+            kSecReturnData:         true,
+        ])
+        
         var item: CFTypeRef?
-        
-        let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: self.expand(title),
-            kSecMatchLimit as String:  kSecMatchLimitOne,
-            kSecReturnData as String:  true,
-        ]
-        
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        let status = SecItemCopyMatching(query, &item)
         
         switch status {
             case errSecSuccess:
@@ -141,62 +141,123 @@ private extension Keychain {
         }
     }
     
-    func set(_ data: Data, for title: String, accessible: CFString) throws {
-        if try self.contains(for: title) == true {
-            let query: [String: Any] = [
-                kSecClass as String:       kSecClassGenericPassword,
-                kSecAttrService as String: self.expand(title),
-            ]
-            
-            let update: [String: Any] = [
-                kSecValueData as String:      data,
-                kSecAttrAccessible as String: accessible,
-            ]
-            
-            try OSStatus.execute {
-                SecItemUpdate(query as CFDictionary, update as CFDictionary)
-            }
-        } else {
-            let attributes: [String: Any] = [
-                kSecClass as String:          kSecClassGenericPassword,
-                kSecAttrService as String:    self.expand(title),
-                kSecValueData as String:      data,
-                kSecAttrAccessible as String: accessible,
-            ]
-            
-            try OSStatus.execute {
-                SecItemAdd(attributes as CFDictionary, nil)
+    func set(_ data: Data, for id: ID) throws {
+        #if DEBUG
+        if id.sync == true {
+            switch id.access {
+                case kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+                     kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                     kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly:
+                    assertionFailure()
+                    
+                default:
+                    break
             }
         }
-    }
-    
-    func delete(for title: String) throws {
-        let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: self.expand(title),
-        ]
+        #endif
         
-        try OSStatus.execute(skip: [errSecItemNotFound]) {
-            SecItemDelete(query as CFDictionary)
-        }
-    }
-    
-    func contains(for title: String) throws -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: self.expand(title),
-            kSecMatchLimit as String:  kSecMatchLimitOne,
-        ]
+        let add = self.dict(from: [
+            kSecClass:              kSecClassGenericPassword,
+            kSecAttrService:        self.expand(id.title),
+            kSecAttrAccessGroup:    id.group,
+            kSecAttrSynchronizable: self.sync(for: id.sync),
+            kSecAttrAccessible:     id.access,
+            kSecValueData:          data,
+        ])
         
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        let status = SecItemAdd(add, nil)
         
         switch status {
             case errSecSuccess:
-                return true
-            case errSecItemNotFound:
-                return false
+                break
+                
+            case errSecDuplicateItem:
+                let query = self.dict(from: [
+                    kSecClass:              kSecClassGenericPassword,
+                    kSecAttrService:        self.expand(id.title),
+                    kSecAttrAccessGroup:    id.group,
+                    kSecAttrSynchronizable: self.sync(for: id.sync),
+                ])
+                
+                let update = self.dict(from: [
+                    kSecAttrAccessible:     id.access,
+                    kSecValueData:          data,
+                ])
+                
+                try OSStatus.execute {
+                    SecItemUpdate(query, update)
+                }
+                
             default:
                 throw status.error()
         }
     }
+    
+    func delete(for id: ID) throws {
+        let query = self.dict(from: [
+            kSecClass:              kSecClassGenericPassword,
+            kSecAttrService:        self.expand(id.title),
+            kSecAttrAccessGroup:    id.group,
+            kSecAttrSynchronizable: self.sync(for: id.sync),
+        ])
+        
+        try OSStatus.execute(skip: [errSecItemNotFound]) {
+            SecItemDelete(query)
+        }
+    }
+    
+    func contains(for id: ID) throws -> Bool {
+        let query = self.dict(from: [
+            kSecClass:              kSecClassGenericPassword,
+            kSecAttrService:        self.expand(id.title),
+            kSecAttrAccessGroup:    id.group,
+            kSecAttrSynchronizable: self.sync(for: id.sync),
+            kSecMatchLimit:         kSecMatchLimitOne,
+        ])
+        
+        let status = SecItemCopyMatching(query, nil)
+        
+        switch status {
+            case errSecSuccess:
+                return true
+                
+            case errSecItemNotFound:
+                return false
+                
+            default:
+                throw status.error()
+        }
+    }
+}
+
+// MARK: - Инструменты
+
+private extension Keychain {
+    func expand(_ key: String) -> String {
+        let prefix = AppSubsystem.prefix
+        
+        if prefix.isEmpty == false {
+            return "\(prefix)-\(self.title)-\(key)"
+        } else {
+            return "\(self.title)-\(key)"
+        }
+    }
+    
+    func dict(from source: [CFString: Any?]) -> CFDictionary {
+        var reduced: [String: Any] =
+            source.reduce(into: [:]) { result, item in
+                if let value = item.value {
+                    result[item.key as String] = value
+                }
+            }
+        
+        reduced[kSecUseDataProtectionKeychain as String] = kCFBooleanTrue
+        
+        return reduced as CFDictionary
+    }
+    
+    func sync(for sync: Bool) -> Any {
+        return sync ? kCFBooleanTrue as Any : kCFBooleanFalse as Any
+    }
+    
 }

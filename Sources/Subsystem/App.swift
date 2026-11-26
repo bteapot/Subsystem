@@ -12,19 +12,27 @@ import Foundation
 
 public struct AppSubsystem {
     
-    // MARK: - Префикс настроек
+    // MARK: - Параметры
     
-    public static func set(prefix: String) {
-        self.prefix = prefix
+    public static var prefix: String {
+        get { self.prefixMutex.value }
+        set { self.prefixMutex.value = newValue }
     }
     
-    static var prefix: String = ""
-    
-    public static func set(accessible: CFString) {
-        self.accessible = accessible
+    public static var access: CFString {
+        get { self.accessMutex.value }
+        set { self.accessMutex.value = newValue }
     }
     
-    public private(set) static var accessible: CFString = kSecAttrAccessibleWhenUnlocked
+    // MARK: - Релиз
+    
+    public static let release = Release()
+    public static let dates   = Dates()
+    
+    // MARK: - Внутреннее
+    
+    static let prefixMutex = Mutex<String>("")
+    static let accessMutex = Mutex<CFString>(kSecAttrAccessibleWhenUnlocked)
     
     static let folderURL: URL = {
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -39,11 +47,6 @@ public struct AppSubsystem {
         // отдадим
         return appURL
     }()
-    
-    // MARK: - Релиз
-    
-    public static let release = Release()
-    public static let dates   = Dates()
 }
 
 // MARK: - Релиз
@@ -83,7 +86,7 @@ extension AppSubsystem {
 // MARK: - Даты
 
 extension AppSubsystem {
-    public struct Dates {
+    public struct Dates: Sendable {
         public let installed: Date
         public let updated:   Date
         
@@ -281,10 +284,10 @@ private extension String {
                 return true
             }
         } else {
-            if let rhi = Int(other) {
-                return false
-            } else {
+            if Int(other) == nil {
                 return self < other
+            } else {
+                return false
             }
         }
     }
