@@ -33,6 +33,7 @@ public struct AppSubsystem {
     
     static let prefixMutex = Mutex<String>("")
     static let accessMutex = Mutex<CFString>(kSecAttrAccessibleWhenUnlocked)
+    static let suitesMutex = Mutex<[String: UserDefaults]>([:])
     
     static let folderURL: URL = {
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

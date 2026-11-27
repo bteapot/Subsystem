@@ -250,7 +250,15 @@ extension Defaults {
 private extension Defaults {
     func defaults(for group: String?) -> UserDefaults {
         if let group {
-            return UserDefaults(suiteName: group)!
+            return AppSubsystem.suitesMutex.withLock { suites in
+                if let suite = suites[group] {
+                    return suite
+                } else {
+                    let suite = UserDefaults(suiteName: group)!
+                    suites[group] = suite
+                    return suite
+                }
+            }
         } else {
             return UserDefaults.standard
         }
