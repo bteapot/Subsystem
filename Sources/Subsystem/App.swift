@@ -20,8 +20,8 @@ public struct AppSubsystem {
     }
     
     public static var access: CFString {
-        get { self.accessMutex.value }
-        set { self.accessMutex.value = newValue }
+        get { self.accessMutex.value as CFString }
+        set { self.accessMutex.value = newValue as String }
     }
     
     // MARK: - Релиз
@@ -32,7 +32,7 @@ public struct AppSubsystem {
     // MARK: - Внутреннее
     
     static let prefixMutex = Mutex<String>("")
-    static let accessMutex = Mutex<CFString>(kSecAttrAccessibleWhenUnlocked)
+    static let accessMutex = Mutex<String>(kSecAttrAccessibleWhenUnlocked as String)
     static let suitesMutex = Mutex<[String: UserDefaults]>([:])
     
     static let folderURL: URL = {
